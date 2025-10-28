@@ -1,0 +1,227 @@
+esphome:
+  name: e1002
+  friendly_name: E1002
+  on_boot:
+    priority: 600
+    then:
+      - delay: 20s
+      - component.update: dashboard_image
+ #     - output.turn_on: bsp_sd_enable
+      - output.turn_on: bsp_battery_enable
+      - delay: 200ms
+      - component.update: battery_voltage
+      - component.update: battery_level
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    #type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "xxx" # please change this value 
+
+ota:
+  - platform: esphome
+    password: "xxx" # please change the password
+
+wifi:
+  ssid: "xxx"
+  password: "xxx"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Reterminal-1 Fallback Hotspot"
+    password: "xxx"
+#web_server:
+#  version: 3
+psram:
+  mode: octal
+  speed: 80MHz
+  
+captive_portal:
+
+#esp32_ble_tracker:
+#  scan_parameters:
+    # We currently use the defaults to ensure Bluetooth
+    # can co-exist with WiFi In the future we may be able to
+    # enable the built-in coexistence logic in ESP-IDF
+#    active: true
+
+#bluetooth_proxy:
+#  active: true
+
+# Deep-sleep, wake by GPIO4
+#deep_sleep:
+#  id: deep_sleep_1
+#  run_duration: 1min
+#  sleep_duration: 10min
+#  wakeup_pin: GPIO4          # Right white button
+#  wakeup_pin_mode: INVERT_WAKEUP
+
+# SPI / I²C
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
+i2c:
+  scl: GPIO20
+  sda: GPIO19
+light:
+#  - platform: binary
+#    name: "Onboard LED"
+#    output: bsp_led
+#    id: onboard_led
+  - platform: monochromatic
+    output: buzzer_pwm
+    name: "Buzzer"
+    id: buzzer
+    # Setting transition length to 0s makes the buzzer turn on and off instantly.
+    default_transition_length: 0s
+switch:
+  - platform: template
+    name: "Refresh"
+    id: refresh_display
+    turn_on_action:
+      - component.update: dashboard_image
+      - delay: 200ms
+      - switch.turn_off: refresh_display
+
+sensor:
+  - platform: sht4x
+    temperature:
+      name: "Temperature"
+      id: temp_sensor
+    humidity:
+      name: "Humidity"
+      id: hum_sensor
+  - platform: wifi_signal
+    name: "Wi-Fi Signal"
+    id: wifi_signal1
+    update_interval: 60s
+  - platform: adc
+    pin: GPIO1
+    name: "Battery Voltage"
+    id: battery_voltage
+    update_interval: 60s
+    attenuation: 12db
+    filters:
+      - multiply: 2.0
+  - platform: template
+    name: "Battery Level"
+    id: battery_level
+    unit_of_measurement: "%"
+    icon: "mdi:battery"
+    device_class: battery
+    state_class: measurement
+    lambda: 'return id(battery_voltage).state;'
+    update_interval: 60s
+    filters:
+      - calibrate_linear:
+          - 4.15 -> 100.0
+          - 3.96 -> 90.0
+          - 3.91 -> 80.0
+          - 3.85 -> 70.0
+          - 3.80 -> 60.0
+          - 3.75 -> 50.0
+          - 3.68 -> 40.0
+          - 3.58 -> 30.0
+          - 3.49 -> 20.0
+          - 3.41 -> 10.0
+          - 3.30 -> 5.0
+          - 3.27 -> 0.0
+      - clamp:
+          min_value: 0
+          max_value: 100
+output:
+#  - platform: gpio
+#    pin: GPIO6
+#    id: bsp_led
+#    inverted: true
+#  - platform: gpio
+#    pin: GPIO16
+#    id: bsp_sd_enable
+  - platform: gpio
+    pin: GPIO21
+    id: bsp_battery_enable
+  - platform: ledc   # CORRECTED: 'ledc' is the correct platform for ESP32 PWM.
+    pin: GPIO45
+    id: buzzer_pwm
+    # The frequency determines the pitch of the buzzer's sound. 1000Hz is a mid-range tone.
+    frequency: 1000Hz
+
+binary_sensor:
+  - platform: gpio    # Next page
+    pin:
+      number: GPIO3
+      mode: INPUT_PULLUP
+      inverted: true
+    id: key1
+    name: "Key1"
+  - platform: gpio     # Prev page
+    pin:
+      number: GPIO4
+      mode: INPUT_PULLUP
+      inverted: true
+    id: key2
+    name: "Key2"
+  - platform: gpio     # Prev page
+    pin:
+      number: GPIO5
+      mode: INPUT_PULLUP
+      inverted: true
+    id: key3
+    name: "Key3"
+    on_press:
+      - component.update: dashboard_image
+
+http_request:
+  verify_ssl: false
+  timeout: 10s
+  watchdog_timeout: 15s
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Berlin
+    on_time:
+      - seconds: 0
+        minutes: 0
+        then:
+          - if:
+              condition:
+                lambda: |-
+                  auto now = id(sntp_time).now();
+                  return !(now.hour >= 1 && now.hour < 6);
+              then:
+                - component.update: dashboard_image
+# download image from HA
+online_image:
+  - id: dashboard_image
+    format: BMP
+    type: BINARY
+    buffer_size: 65535
+    url: http://192.168.180.11:10000/lovelace/reterminal?viewport=800x480&eink=1&format=bmp
+    update_interval: 1min
+    on_download_finished:
+      - component.update: epaper_display
+
+
+display:
+  - platform: waveshare_epaper
+    id: epaper_display
+    model: 7.50inv2
+    cs_pin: GPIO10
+    dc_pin: GPIO11
+    reset_pin:
+      number: GPIO12
+      inverted: false
+    busy_pin:
+      number: GPIO13
+      inverted: true
+    update_interval: never
+    lambda: |-
+      it.image(0, 0, id(dashboard_image));

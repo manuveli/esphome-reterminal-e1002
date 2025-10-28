@@ -1,0 +1,79 @@
+esphome:
+  name: reterminal-1
+  friendly_name: reTerminal-1
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "xxx"
+
+ota:
+  - platform: esphome
+    password: "xxx"
+
+wifi:
+  ssid: "xxx"
+  password: "xxx"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Reterminal-1 Fallback Hotspot"
+    password: "xxx"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+captive_portal:
+
+i2c:
+  - id: bus_a       # Du kannst eine ID hinzufügen, falls du sie später brauchst
+    sda: GPIO19     # Serial Data Pin des reTerminal
+    scl: GPIO20     # Serial Clock Pin des reTerminal
+    scan: true      # Prüft beim Start, welche Geräte am Bus hängen
+    frequency: 400kHz # Optional: Eine höhere Frequenz für schnelle Geräte
+
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
+
+http_request:
+  verify_ssl: false
+  timeout: 20s
+  watchdog_timeout: 25s
+
+online_image:
+  - id: dashboard_image
+    format: BMP
+    type: RGB565
+    buffer_size: 65536
+    url: http://192.168.180.11:10000/lovelace/reterminal?viewport=800x480&eink=1&format=bmp
+    update_interval: 1min
+    on_download_finished:
+      then:
+        - delay: 500ms
+        - component.update: epaper_display
+
+display:
+  - platform: epaper_spi
+    id: epaper_display
+    model: 7.3in-spectra-e6
+    cs_pin: GPIO10
+    dc_pin: GPIO11
+    reset_pin:
+      number: GPIO12
+      inverted: false
+    busy_pin:
+      number: GPIO13
+      inverted: true
+    update_interval: never
+    lambda: |-
+      it.image(0, 0, id(dashboard_image));
