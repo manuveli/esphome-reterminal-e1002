@@ -46,7 +46,7 @@ api:
                 int dur  = atoi(note.substr(colon + 1).c_str());
 
                 if (freq > 0) {
-                  // ✅ 正确写法
+                  // Set frequency and enable buzzer output
                   bz->update_frequency(freq);
                   bz->set_level(0.6);
                 } else {
@@ -125,13 +125,13 @@ switch:
     id: refresh_display
     turn_on_action:
       - component.update: dashboard_image
-      - delay: 200ms                   # 等待下载触发
+      - delay: 200ms                   # Wait for the image download to trigger
       - switch.turn_off: refresh_display
 #  - platform: template
 #    name: "Force Deep Sleep"
 #    turn_on_action:
 #      - logger.log:
-#          format: "进入休眠 %d 分钟"
+#          format: "Entering deep sleep for %d minutes"
 #          args: [ 'id(sleep_minutes)' ]
 #      - deep_sleep.enter:
 #          id: deep_sleep_1
@@ -276,18 +276,18 @@ time:
     id: sntp_time
     timezone: Asia/Shanghai
     on_time:
-      # 每个整点触发
+      # Trigger at every full hour
       - seconds: 0
         minutes: 0
         then:
           - if:
               condition:
-                # 判断小时数不是 1~6
+                # Check that the current hour is NOT between 1:00 and 6:00
                 lambda: |-
                   auto now = id(sntp_time).now();
                   return !(now.hour >= 1 && now.hour < 6);
               then:
-                # 仅非 1~6 点执行更新
+                # Only refresh the display outside of 1:00-6:00 AM
                 - component.update: dashboard_image
 
 online_image:
