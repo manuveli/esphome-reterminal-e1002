@@ -27,8 +27,6 @@ ESPHome configuration for the **reTerminal E1002**, an ESP32-S3 based device wit
 | File | Description |
 |---|---|
 | `reTerminal_e1002.yaml` | Production ESPHome configuration – all credentials externalized via secrets |
-| `secrets.yaml` | Your personal credentials (will **never** be committed to the repo) |
-| `.gitignore` | Prevents sensitive files from being accidentally committed |
 
 ---
 
