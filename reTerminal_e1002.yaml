@@ -24,7 +24,7 @@ logger:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "xxx"
+    key: !secret reterminal_api_key
   services:
     - service: play_song
       variables:
@@ -46,7 +46,7 @@ api:
                 int dur  = atoi(note.substr(colon + 1).c_str());
 
                 if (freq > 0) {
-                  // Set frequency and enable buzzer output
+                  // Correct syntax
                   bz->update_frequency(freq);
                   bz->set_level(0.6);
                 } else {
@@ -64,11 +64,11 @@ api:
 # Allow Over-The-Air updates
 ota:
   - platform: esphome
-    password: "xxx"
+    password: !secret reterminal_ota_password
 
 wifi:
-  ssid: "xxx"
-  password: "xxx"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
 psram:
   mode: octal
@@ -77,20 +77,15 @@ psram:
 #  version: 3
 captive_portal:
 
-# External component for waveshare epaper
-#external_components:
-#  - source: github://lublak/esphome@pull/1/head
-#    components: [ waveshare_epaper ]
+#esp32_ble_tracker:
+#  scan_parameters:
+#    # We currently use the defaults to ensure Bluetooth
+#    # can co-exist with WiFi In the future we may be able to
+#    # enable the built-in coexistence logic in ESP-IDF
+#    active: true
 
-esp32_ble_tracker:
-  scan_parameters:
-    # We currently use the defaults to ensure Bluetooth
-    # can co-exist with WiFi In the future we may be able to
-    # enable the built-in coexistence logic in ESP-IDF
-    active: true
-
-bluetooth_proxy:
-  active: true
+#bluetooth_proxy:
+#  active: true
 
 # Deep-sleep, wake by GPIO4
 #deep_sleep:
@@ -107,18 +102,16 @@ spi:
 i2c:
   scl: GPIO20
   sda: GPIO19
+
 light:
-#  - platform: binary
-#    name: "Onboard LED"
-#    output: bsp_led
-#    id: onboard_led
   - platform: monochromatic
     icon: "mdi:volume-high"
     output: buzzer_pwm
     name: "Buzzer"
     id: buzzer
-    # Setting transition length to 0s makes the buzzer turn on and off instantly.
+    # Setting transition length to 0s makes the buzzer turn on and off instantly
     default_transition_length: 0s
+
 switch:
   - platform: template
     name: "Refresh"
@@ -127,15 +120,7 @@ switch:
       - component.update: dashboard_image
       - delay: 200ms                   # Wait for the image download to trigger
       - switch.turn_off: refresh_display
-#  - platform: template
-#    name: "Force Deep Sleep"
-#    turn_on_action:
-#      - logger.log:
-#          format: "Entering deep sleep for %d minutes"
-#          args: [ 'id(sleep_minutes)' ]
-#      - deep_sleep.enter:
-#          id: deep_sleep_1
-#          sleep_duration: !lambda 'return (id(sleep_minutes) * 60000);'
+
 sensor:
   - platform: sht4x
     temperature:
@@ -182,6 +167,7 @@ sensor:
       - clamp:
           min_value: 0
           max_value: 100
+
 output:
 #  - platform: gpio
 #    pin: GPIO6
@@ -193,13 +179,11 @@ output:
   - platform: gpio
     pin: GPIO21
     id: bsp_battery_enable
-  - platform: ledc   # CORRECTED: 'ledc' is the correct platform for ESP32 PWM.
+  - platform: ledc
     pin: GPIO45
     id: buzzer_pwm
-    # The frequency determines the pitch of the buzzer's sound. 1000Hz is a mid-range tone.
-    frequency: 1000Hz
+    frequency: 1000Hz  # Pitch of the buzzer tone
 
-          
 binary_sensor:
   - platform: gpio    # Next page
     pin:
@@ -208,14 +192,14 @@ binary_sensor:
       inverted: true
     id: key1
     name: "Key1"
-  - platform: gpio     # Prev page
+  - platform: gpio    # Previous page
     pin:
       number: GPIO4
       mode: INPUT_PULLUP
       inverted: true
     id: key2
     name: "Key2"
-  - platform: gpio     # Prev page
+  - platform: gpio    # Manually refresh display
     pin:
       number: GPIO5
       mode: INPUT_PULLUP
@@ -225,47 +209,6 @@ binary_sensor:
     on_press:
       - component.update: dashboard_image
 
-  # - platform: gpio
-  #   pin:
-  #     number: GPIO4
-  #     mode: INPUT_PULLUP
-  #     inverted: true
-  #   id: key2
-  #   name: "Key2"
-  #   on_press:
-  #     then:
-  #       - lambda: |-
-  #           id(page_index) = (id(page_index) - 1 + 3) % 3;
-  #           id(epaper_display).update();
-
-# Home Assistant time
-#time:
-#  - platform: homeassistant
-#    id: ha_time
-#globals:
-#  - id: sleep_minutes
-#    type: int
-#    restore_value: no
-#    initial_value: '0'
-
-##number:
- # - platform: template
-#    name: "Sleep Minutes"
-#    id: sleep_minutes_number
-#    optimistic: true
-#    min_value: 1
-#    max_value: 360
-#    step: 1
-#    set_action:
-#      - lambda: |-
-#          id(sleep_minutes) = (int)x;
-
-
-
-
-#deep_sleep:
-#  id: deep_sleep_1
-
 http_request:
   verify_ssl: false
   timeout: 20s
@@ -274,11 +217,11 @@ http_request:
 time:
   - platform: sntp
     id: sntp_time
-    timezone: Asia/Shanghai
+    timezone: Europe/Berlin
     on_time:
-      # Trigger at every full hour
+      # Trigger every 30 minutes
       - seconds: 0
-        minutes: 0
+        minutes: 0,30
         then:
           - if:
               condition:
@@ -287,7 +230,7 @@ time:
                   auto now = id(sntp_time).now();
                   return !(now.hour >= 1 && now.hour < 6);
               then:
-                # Only refresh the display outside of 1:00-6:00 AM
+                # Only refresh the display outside of 1:00–6:00 AM
                 - component.update: dashboard_image
 
 online_image:
@@ -295,10 +238,9 @@ online_image:
     format: PNG
     type: RGB565
     buffer_size: 65536
-    url: http://192.168.180.11:10000/lovelace/reterminal?viewport=800x480&format=png
+    url: !secret reterminal_dashboard_url
     on_download_finished:
       - component.update: epaper_display
-
 
 display:
   - platform: epaper_spi
