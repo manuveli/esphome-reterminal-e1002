@@ -38,7 +38,7 @@ ESPHome configuration for the **reTerminal E1002**, an ESP32-S3 based device wit
 
 - [ESPHome](https://esphome.io/guides/installing_esphome) installed (CLI or Dashboard)
 - USB-to-serial adapter (e.g. CP2102) or direct USB cable to the ESP32-S3
-- Home Assistant with a Lovelace view accessible as a PNG screenshot
+- The **Puppet** Home Assistant add-on is required to generate dashboard screenshots for the display. It runs a screenshot server on port 10000 that the reTerminal fetches images from. Installation and configuration instructions can be found on the [Puppet GitHub page](https://github.com/balloob/home-assistant-addons/tree/main/puppet).
 
 ### 2. Erase Flash
 
